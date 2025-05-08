@@ -6,8 +6,16 @@ import secrets
 import itertools
 
 
-def compute_factorials(n):  # Предварительное вычисление факториалов для чисел от 0 до n
+# Предварительное вычисление факториалов для чисел от 0 до n
+def compute_factorials1(n):
     return [factorial(i) for i in range(n + 1)]
+
+
+def compute_factorials(n):
+    fact = [1] * (n + 1)
+    for i in range(1, n + 1):
+        fact[i] = fact[i - 1] * i
+    return fact
 
 
 @lru_cache
@@ -67,7 +75,7 @@ def optimal_skip_for_max_average(total_tickets):
 
 @lru_cache
 # вычисляет средний выигрыш при пропуске skip-1 билет по алгоритму со средним
-def average_win_med(skip, total_tickets):
+def average_win_med_gpt(skip, total_tickets):
     average = 0.0
     if skip == 1:
         for k in range(1, total_tickets + 1):
@@ -90,12 +98,10 @@ def average_win_med(skip, total_tickets):
         if low != total_tickets-skip+1:
             chanse_drop = 0
             for i in range(low+1):
-                total_drop = factorials[total_tickets-skip-i] * factorials[
-                    # нужна или нет 1
-                    low]/factorials[low-i] / factorials[total_tickets-skip+low]
-                chanse_drop += total_drop
-                # print(chanse_drop, i, total_drop)
-                # print(avr_n, mid, low, avg_inskip)
+                total_drop = factorials[total_tickets -
+                                        skip-i] / factorials[low-i]
+                chanse_drop += total_drop / \
+                    factorials[total_tickets-skip+1] * factorials[low]
 
             avg_inskip *= chanse_drop
             average += avg_inskip
@@ -106,7 +112,7 @@ def average_win_med(skip, total_tickets):
 
 
 @lru_cache
-def average_win_med_gpt(skip, total_tickets):
+def average_win_med_gpt1(skip, total_tickets):
     k = skip - 1
     # всего сочетаний
     total_comb = comb(total_tickets, k)
@@ -127,8 +133,49 @@ def average_win_med_gpt(skip, total_tickets):
     return total_sum / total_comb
 
 
-# Определяет оптимальное количество пропущенных билетов для максимизации среднего выигрыша
+@lru_cache
 def optimal_skip_for_max_average_new(total_tickets):
+    if total_tickets == 1:
+        return [1, average_win_med_gpt(1, 1)]
+
+    start = total_tickets // 2
+    best_win = average_win_med_gpt(start, total_tickets)
+
+    # Проверяем соседние значения (если они допустимы)
+    win_left = average_win_med_gpt(
+        start - 1, total_tickets) if start > 1 else float('-inf')
+    win_right = average_win_med_gpt(
+        start + 1, total_tickets) if start < total_tickets-1 else float('-inf')
+
+    # Определяем направление поиска
+    if win_right > best_win:
+        direction = 1
+        skip = start + 1
+        best_win = win_right
+    elif win_left > best_win:
+        direction = -1
+        skip = start - 1
+        best_win = win_left
+    else:
+        return [start, best_win]  # локальный максимум
+
+    # Односторонний поиск в выбранном направлении
+    while 1 <= skip + direction <= total_tickets-1:
+        next_skip = skip + direction
+        next_win = average_win_med_gpt(next_skip, total_tickets)
+
+        if next_win > best_win:
+            skip = next_skip
+            best_win = next_win
+        else:
+            break
+
+    return [skip, best_win]
+
+# Определяет оптимальное количество пропущенных билетов для максимизации среднего выигрыша
+
+
+def optimal_skip_for_max_average_new_old(total_tickets):
     total_win = average_win_med_gpt(1, total_tickets)
     for skip in range(1, total_tickets):
         next_win = average_win_med_gpt(skip+1, total_tickets)

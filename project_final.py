@@ -1,4 +1,4 @@
-from math import factorial, comb
+from math import comb
 from functools import lru_cache
 import random
 import time
@@ -7,10 +7,6 @@ import itertools
 
 
 # Предварительное вычисление факториалов для чисел от 0 до n
-def compute_factorials1(n):
-    return [factorial(i) for i in range(n + 1)]
-
-
 def compute_factorials(n):
     fact = [1] * (n + 1)
     for i in range(1, n + 1):
@@ -42,7 +38,7 @@ def optimal_skip_for_max_probability(total_tickets):
 @lru_cache
 # Вычисляет средний выигрыш при пропуске skip - 1 билетов
 def average_win(skip, total_tickets):
-    factorials = compute_factorials(total_tickets)
+    # factorials = compute_factorials(total_tickets)
     average = 0.0
 
     if skip == 1:
@@ -75,14 +71,14 @@ def optimal_skip_for_max_average(total_tickets):
 
 @lru_cache
 # вычисляет средний выигрыш при пропуске skip-1 билет по алгоритму со средним
-def average_win_med_gpt(skip, total_tickets):
+def average_win_med_gpt1(skip, total_tickets):
     average = 0.0
     if skip == 1:
         for k in range(1, total_tickets + 1):
             average += k
         return average / total_tickets
 
-    factorials = compute_factorials(total_tickets)
+    # factorials = compute_factorials(total_tickets)
     for avr_n in itertools.combinations(range(1, total_tickets+1), skip-1):
         avr_n = list(avr_n)
         avg_inskip = 0
@@ -112,25 +108,25 @@ def average_win_med_gpt(skip, total_tickets):
 
 
 @lru_cache
-def average_win_med_gpt1(skip, total_tickets):
+def average_win_med_gpt(skip, total_tickets):
     k = skip - 1
-    # всего сочетаний
-    total_comb = comb(total_tickets, k)
     total_sum = 0.0
 
-    for S in itertools.combinations(range(1, total_tickets+1), k):
-        μ = sum(S)/k if k > 0 else 0.0
-        # билеты, которые остались
-        remaining = [x for x in range(1, total_tickets+1) if x not in S]
-        # допустимые (>= μ)
-        H = [x for x in remaining if x >= μ]
+    for S in itertools.combinations(range(1, total_tickets + 1), k):
+        μ = sum(S) / k if k > 0 else 0.0
 
-        if H:
-            # среднее по H
-            total_sum += sum(H)/len(H)
-        # иначе прибавляем 0
+        sum_H = 0
+        count_H = 0
 
-    return total_sum / total_comb
+        for x in range(1, total_tickets + 1):
+            if x not in S and x >= μ:
+                sum_H += x
+                count_H += 1
+
+        if count_H > 0:
+            total_sum += sum_H / count_H
+
+    return total_sum * factorials[total_tickets-k]*factorials[k] / factorials[total_tickets]
 
 
 @lru_cache
@@ -293,6 +289,7 @@ def simulation(n, repeat):
 
 n = int(input("Введите максимальное количество билетов (n): "))
 start_time = time.time()
+factorials = compute_factorials(n)
 print_results_table(n)
 # print(f"\nn={n}")
 # simulation(n, 10**7)
